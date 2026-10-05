@@ -1,7 +1,8 @@
 (function () {
   "use strict";
 
-  const STORAGE_KEY = "wastewater-watch-settings-v1";
+  const STORAGE_KEY = "wastewater-watch-settings-v2";
+  const LEGACY_STORAGE_KEY = "wastewater-watch-settings-v1";
   const LIVE_DATA_KEY = "wastewater-watch-live-data-v1";
   const DATA_PATH = (document.currentScript && document.currentScript.dataset.dataPath) || "../data/wastewater.json";
   const CDC_ENDPOINT = "https://data.cdc.gov/resource/atcp-73re.json";
@@ -23,6 +24,13 @@
     "Sonoma",
   ];
   const AREAS = [
+    {
+      id: "oakland-2571",
+      label: "Oakland / Alameda site 2571",
+      short: "Oakland",
+      sites: ["ID:2571"],
+      note: "WastewaterSCAN site ID:2571. CDC labels it Alameda County; Alameda County describes Oakland west/east sub-sewersheds.",
+    },
     {
       id: "east-bay",
       label: "East Bay",
@@ -111,7 +119,7 @@
   };
 
   const DEFAULT_SETTINGS = {
-    area: "east-bay",
+    area: "oakland-2571",
     range: "6m",
     pathogens: ["SARS-CoV-2", "Influenza A virus", "RSV"],
     showSites: true,
@@ -587,6 +595,7 @@
   }
 
   function areaMatches(row, area) {
+    if (Array.isArray(area.sites) && area.sites.length) return area.sites.includes(row.site);
     if (!area.counties) return true;
     const rowCounties = String(row.countiesServed || "").split(",").map((item) => item.trim());
     return area.counties.some((county) => rowCounties.includes(county));
@@ -747,7 +756,17 @@
   }
 
   function loadSettings() {
-    return { ...DEFAULT_SETTINGS, ...safeJson(localStorage.getItem(STORAGE_KEY) || "{}", {}) };
+    const saved = safeJson(localStorage.getItem(STORAGE_KEY) || "null", null);
+    if (saved) return { ...DEFAULT_SETTINGS, ...saved };
+
+    const legacy = safeJson(localStorage.getItem(LEGACY_STORAGE_KEY) || "null", null);
+    if (legacy) {
+      const migrated = { ...DEFAULT_SETTINGS, ...legacy, area: DEFAULT_SETTINGS.area };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+      return migrated;
+    }
+
+    return { ...DEFAULT_SETTINGS };
   }
 
   function saveSettings() {
