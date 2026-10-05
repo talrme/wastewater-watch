@@ -410,7 +410,7 @@
         const xx = x(new Date(point.weekEnd).getTime());
         const yy = y(point.value);
         const index = pointsForTooltip.findIndex((item) => item.pathogen === pathogen && item.weekEnd === point.weekEnd);
-        return `<circle data-point-index="${index}" class="chart-point" cx="${xx.toFixed(1)}" cy="${yy.toFixed(1)}" r="4.2"></circle>`;
+        return `<circle data-point-index="${index}" data-week="${escapeAttr(point.weekEnd)}" class="chart-point" cx="${xx.toFixed(1)}" cy="${yy.toFixed(1)}" r="4.2"></circle>`;
       }).join("");
       return `<g style="--line:${info.color}"><path class="series-line" d="${path}"></path>${circles}</g>`;
     }).join("");
@@ -420,6 +420,7 @@
       <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Wastewater viral activity chart">
         <rect class="plot-bg" x="${pad.left}" y="${pad.top}" width="${innerW}" height="${innerH}"></rect>
         ${grid}
+        <line class="chart-week-marker" data-chart-week-marker x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" hidden></line>
         ${lines}
         <line class="axis-line" x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}"></line>
         <line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}"></line>
@@ -489,6 +490,7 @@
     if (!wrap || !tooltip) return;
     const points = safeJson(wrap.dataset.points || "[]", []);
     const point = points[state.activePoint];
+    updateChartSelection(points);
     if (!point) {
       tooltip.hidden = true;
     } else {
@@ -537,11 +539,45 @@
         <article class="chart-detail-item" style="--series-color:${info.color}">
           <span class="series-dot" aria-hidden="true"></span>
           <strong>${escapeHtml(info.label)}</strong>
-          <span>${point ? `${formatNumber(point.value)} WVAL` : "No data"}</span>
-          ${point ? `<span class="level-chip level-${slug(point.category)}">${escapeHtml(point.category || "Category varies by site")}</span>` : ""}
+          ${point ? `<span class="level-chip level-${slug(point.category)}">${escapeHtml(point.category || "Category varies by site")}</span>` : `<span class="detail-wval">No data</span>`}
+          ${point ? `<span class="detail-wval">${formatNumber(point.value)} WVAL</span>` : ""}
         </article>
       `;
     }).join("");
+  }
+
+  function updateChartSelection(points) {
+    const wrap = document.querySelector("[data-chart]");
+    if (!wrap) return;
+    const marker = wrap.querySelector("[data-chart-week-marker]");
+    const activeWeek = state.showChartDetail ? state.activeWeek : null;
+    wrap.querySelectorAll(".chart-point").forEach((circle) => {
+      circle.classList.toggle("is-selected-week", Boolean(activeWeek && circle.getAttribute("data-week") === activeWeek));
+    });
+    if (!marker) return;
+    const selected = points.find((point) => point.weekEnd === activeWeek);
+    if (!selected) {
+      marker.hidden = true;
+      return;
+    }
+    marker.hidden = false;
+    marker.setAttribute("x1", selected.x.toFixed(1));
+    marker.setAttribute("x2", selected.x.toFixed(1));
+    keepSelectedWeekVisible(wrap, selected.x);
+  }
+
+  function keepSelectedWeekVisible(wrap, chartX) {
+    if (!state.showChartDetail || wrap.scrollWidth <= wrap.clientWidth + 2) return;
+    const svg = wrap.querySelector("svg");
+    if (!svg) return;
+    const svgWidth = svg.getBoundingClientRect().width;
+    const selectedLeft = (chartX / 880) * svgWidth;
+    const margin = Math.min(120, wrap.clientWidth * 0.22);
+    const visibleLeft = wrap.scrollLeft + margin;
+    const visibleRight = wrap.scrollLeft + wrap.clientWidth - margin;
+    if (selectedLeft >= visibleLeft && selectedLeft <= visibleRight) return;
+    const nextLeft = Math.max(0, selectedLeft - wrap.clientWidth / 2);
+    wrap.scrollTo({ left: nextLeft, behavior: state.settings.reduceMotion ? "auto" : "smooth" });
   }
 
   function uniqueWeeks(points) {
