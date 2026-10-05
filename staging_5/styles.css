@@ -1,0 +1,37 @@
+@import url("../shared/base.css");
+
+:root {
+  --ink: #24231f;
+  --muted: #6e6a5d;
+  --bg: #fbfaf5;
+  --paper: #fffdf6;
+  --line: #dfdbcf;
+  --accent: #6c7f3f;
+  --accent-2: #be6b4b;
+  --soft: rgba(108, 127, 63, 0.13);
+  --shadow: 3px 3px 0 rgba(36, 35, 31, 0.13);
+}
+
+body {
+  background:
+    linear-gradient(transparent 29px, rgba(36, 35, 31, 0.07) 30px),
+    linear-gradient(90deg, transparent 29px, rgba(36, 35, 31, 0.05) 30px),
+    var(--bg);
+  background-size: 30px 30px;
+}
+
+.hero {
+  min-height: 170px;
+}
+
+.hero h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 900;
+}
+
+.sites-panel {
+  order: 3;
+}
+
+.chart-panel { order: 4; }
+.cards-panel { order: 5; }

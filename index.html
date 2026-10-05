@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wastewater Watch Staging</title>
+  <style>
+    body { margin: 0; min-height: 100vh; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f7ef; color: #172018; }
+    main { width: min(980px, calc(100% - 28px)); margin: 0 auto; padding: 28px 0; }
+    h1 { font-size: clamp(3rem, 8vw, 6rem); line-height: .9; margin: 0 0 12px; }
+    p { color: #657064; max-width: 680px; line-height: 1.5; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 22px; }
+    a { display: grid; gap: 10px; min-height: 150px; padding: 18px; border: 2px solid #172018; border-radius: 8px; background: #fffef8; color: inherit; text-decoration: none; box-shadow: 5px 5px 0 rgba(23, 32, 24, .12); }
+    a:hover { transform: translate(-1px, -1px); box-shadow: 7px 7px 0 rgba(23, 32, 24, .18); }
+    strong { font-size: 1.5rem; }
+    span { color: #657064; }
+  </style>
+</head>
+<body>
+  <main>
+    <p>Real CDC NWSS data. Five staging directions.</p>
+    <h1>Wastewater Watch</h1>
+    <p>Pick a staging option. Each one has the same real data pipeline, manual refresh button, settings modal, area selector, chart, cards, and latest site table.</p>
+    <section class="grid">
+      <a href="staging_1/"><strong>1. Bay Radar</strong><span>Clean, bright, general purpose.</span></a>
+      <a href="staging_2/"><strong>2. Signal Board</strong><span>Dark operations dashboard.</span></a>
+      <a href="staging_3/"><strong>3. Waterline</strong><span>Softer family check-in.</span></a>
+      <a href="staging_4/"><strong>4. Viral Transit</strong><span>Route-map inspired.</span></a>
+      <a href="staging_5/"><strong>5. Field Notes</strong><span>Notebook and table-first.</span></a>
+    </section>
+  </main>
+</body>
+</html>
