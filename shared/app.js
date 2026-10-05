@@ -391,10 +391,16 @@
 
     const x = (time) => pad.left + ((time - minDate) / Math.max(1, maxDate - minDate)) * innerW;
     const y = (value) => pad.top + innerH - (value / maxValue) * innerH;
-    const grid = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+    const gridSteps = [0, 0.25, 0.5, 0.75, 1];
+    const grid = gridSteps.map((ratio) => {
       const value = maxValue * ratio;
       const yy = y(value);
-      return `<line class="grid-line" x1="${pad.left}" y1="${yy}" x2="${width - pad.right}" y2="${yy}"></line><text class="axis-label" x="8" y="${yy + 4}">${formatNumber(value)}</text>`;
+      return `<line class="grid-line" x1="${pad.left}" y1="${yy}" x2="${width - pad.right}" y2="${yy}"></line>`;
+    }).join("");
+    const yAxis = gridSteps.map((ratio) => {
+      const value = maxValue * ratio;
+      const yy = y(value);
+      return `<span class="chart-y-axis-label" style="top:${yy.toFixed(1)}px">${formatNumber(value)}</span>`;
     }).join("");
 
     const lines = series.map(({ pathogen, points }) => {
@@ -417,24 +423,36 @@
 
     wrap.dataset.points = JSON.stringify(pointsForTooltip);
     wrap.innerHTML = `
-      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Wastewater viral activity chart">
+      <div class="chart-y-axis" aria-hidden="true">
+        <div class="chart-y-axis-inner">
+          <span class="chart-y-axis-line" style="top:${pad.top}px; height:${innerH}px"></span>
+          ${yAxis}
+        </div>
+      </div>
+      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Wastewater viral activity chart">
         <rect class="plot-bg" x="${pad.left}" y="${pad.top}" width="${innerW}" height="${innerH}"></rect>
         ${grid}
         <line class="chart-week-marker" data-chart-week-marker x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" hidden></line>
         ${lines}
         <line class="axis-line" x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}"></line>
-        <line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}"></line>
         <text class="axis-title" x="${pad.left}" y="${height - 14}">${formatDate(new Date(minDate).toISOString().slice(0, 10))}</text>
         <text class="axis-title is-right" x="${width - pad.right}" y="${height - 14}">${formatDate(new Date(maxDate).toISOString().slice(0, 10))}</text>
       </svg>
       <div class="chart-tooltip" data-chart-tooltip hidden></div>
     `;
+    scrollChartToLatest(wrap);
     wrap.onmousemove = (event) => handleChartMove(event, pointsForTooltip, wrap);
     wrap.onmouseleave = () => {
       state.activePoint = null;
       renderChartTooltip();
     };
     wrap.onclick = (event) => handleChartMove(event, pointsForTooltip, wrap);
+  }
+
+  function scrollChartToLatest(wrap) {
+    requestAnimationFrame(() => {
+      if (!state.showChartDetail) wrap.scrollLeft = wrap.scrollWidth;
+    });
   }
 
   function handleChartMove(event, points, wrap) {

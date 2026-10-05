@@ -407,7 +407,39 @@ h2 { font-size: clamp(1.65rem, 3.6vw, 3rem); }
 .chart-wrap svg {
   display: block;
   width: 100%;
-  min-height: 320px;
+  height: 360px;
+}
+
+.chart-y-axis {
+  position: sticky;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  width: 54px;
+  height: 0;
+  pointer-events: none;
+}
+
+.chart-y-axis-inner {
+  position: relative;
+  width: 54px;
+  height: 360px;
+  background: linear-gradient(90deg, var(--chart-bg) 0%, var(--chart-bg) 68%, transparent);
+}
+
+.chart-y-axis-line {
+  position: absolute;
+  right: 5px;
+  border-left: 1.4px solid var(--axis-stroke);
+}
+
+.chart-y-axis-label {
+  position: absolute;
+  right: 13px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .plot-bg { fill: var(--plot-bg); }
