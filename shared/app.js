@@ -114,6 +114,7 @@
     data: null,
     settings: loadSettings(),
     activePoint: null,
+    activeWeek: null,
     showChartDetail: false,
   };
 
@@ -200,9 +201,23 @@
         renderSettingsValues();
       }
 
+      const chartClose = target.closest("[data-chart-close]");
+      if (chartClose) {
+        state.activePoint = null;
+        state.activeWeek = null;
+        state.showChartDetail = false;
+        renderChartTooltip();
+      }
+
+      const chartStep = target.closest("[data-chart-step]");
+      if (chartStep) {
+        stepChartWeek(Number(chartStep.getAttribute("data-chart-step") || 0));
+      }
+
       const point = target.closest("[data-point-index]");
       if (point) {
         state.activePoint = Number(point.getAttribute("data-point-index"));
+        setActiveWeekFromPoint();
         state.showChartDetail = true;
         renderChartTooltip();
       }
@@ -342,6 +357,8 @@
     if (!wrap) return;
     if (detail) detail.hidden = true;
     state.showChartDetail = false;
+    state.activePoint = null;
+    state.activeWeek = null;
 
     const series = Array.from(aggregate.entries())
       .filter(([pathogen]) => state.settings.pathogens.includes(pathogen))
@@ -406,7 +423,6 @@
     wrap.onmousemove = (event) => handleChartMove(event, pointsForTooltip, wrap);
     wrap.onmouseleave = () => {
       state.activePoint = null;
-      state.showChartDetail = false;
       renderChartTooltip();
     };
     wrap.onclick = (event) => handleChartMove(event, pointsForTooltip, wrap);
@@ -431,7 +447,30 @@
       }
     });
     state.activePoint = bestIndex;
-    state.showChartDetail = event.type !== "mousemove";
+    if (event.type !== "mousemove") {
+      setActiveWeekFromPoint(points[bestIndex]);
+      state.showChartDetail = true;
+    }
+    renderChartTooltip();
+  }
+
+  function setActiveWeekFromPoint(point) {
+    const chartPoint = point || safeJson(document.querySelector("[data-chart]")?.dataset.points || "[]", [])[state.activePoint];
+    if (chartPoint && chartPoint.weekEnd) state.activeWeek = chartPoint.weekEnd;
+  }
+
+  function stepChartWeek(delta) {
+    const wrap = document.querySelector("[data-chart]");
+    if (!wrap || !delta) return;
+    const points = safeJson(wrap.dataset.points || "[]", []);
+    const weeks = uniqueWeeks(points);
+    if (!weeks.length) return;
+    const current = state.activeWeek || points[state.activePoint]?.weekEnd || weeks[weeks.length - 1];
+    const currentIndex = Math.max(0, weeks.indexOf(current));
+    const nextIndex = Math.min(weeks.length - 1, Math.max(0, currentIndex + delta));
+    state.activeWeek = weeks[nextIndex];
+    state.activePoint = points.findIndex((point) => point.weekEnd === state.activeWeek);
+    state.showChartDetail = true;
     renderChartTooltip();
   }
 
@@ -444,29 +483,61 @@
     const point = points[state.activePoint];
     if (!point) {
       tooltip.hidden = true;
-      if (detail) detail.hidden = true;
-      return;
+    } else {
+      const info = PATHOGENS[point.pathogen] || { label: point.pathogen, color: "#333" };
+      tooltip.hidden = false;
+      tooltip.style.left = `${Math.min(82, Math.max(8, (point.x / 880) * 100))}%`;
+      tooltip.style.top = `${Math.min(78, Math.max(10, (point.y / 360) * 100))}%`;
+      tooltip.innerHTML = `
+        <p>${escapeHtml(formatDate(point.weekEnd))}</p>
+        <strong style="color:${info.color}">${escapeHtml(info.label)} ${formatNumber(point.value)} WVAL</strong>
+        <span>${escapeHtml(point.category || "Category varies by site")}</span>
+      `;
     }
-    const info = PATHOGENS[point.pathogen] || { label: point.pathogen, color: "#333" };
-    tooltip.hidden = false;
-    tooltip.style.left = `${Math.min(82, Math.max(8, (point.x / 880) * 100))}%`;
-    tooltip.style.top = `${Math.min(78, Math.max(10, (point.y / 360) * 100))}%`;
-    tooltip.innerHTML = `
-      <p>${escapeHtml(formatDate(point.weekEnd))}</p>
-      <strong style="color:${info.color}">${escapeHtml(info.label)} ${formatNumber(point.value)} WVAL</strong>
-      <span>${escapeHtml(point.category || "Category varies by site")}</span>
-    `;
-    if (detail && state.showChartDetail) {
+
+    if (detail && state.showChartDetail && state.activeWeek) {
+      const weeks = uniqueWeeks(points);
+      const weekIndex = weeks.indexOf(state.activeWeek);
+      const hasPrevious = weekIndex > 0;
+      const hasNext = weekIndex >= 0 && weekIndex < weeks.length - 1;
       detail.hidden = false;
       detail.innerHTML = `
-        <span>${escapeHtml(formatDate(point.weekEnd))}</span>
-        <strong style="--detail-color:${info.color}">${escapeHtml(info.label)}</strong>
-        <span>${formatNumber(point.value)} WVAL</span>
-        <span class="level-chip level-${slug(point.category)}">${escapeHtml(point.category || "Category varies by site")}</span>
+        <div class="chart-detail-head">
+          <button type="button" data-chart-step="-1" aria-label="Previous week" ${hasPrevious ? "" : "disabled"}>&lt;</button>
+          <div class="chart-detail-title">
+            <span>Week of</span>
+            <strong>${escapeHtml(formatDate(state.activeWeek))}</strong>
+          </div>
+          <button type="button" data-chart-step="1" aria-label="Next week" ${hasNext ? "" : "disabled"}>&gt;</button>
+          <button type="button" class="chart-detail-close" data-chart-close aria-label="Close chart detail">x</button>
+        </div>
+        <div class="chart-detail-series">
+          ${renderWeekDetailRows(points, state.activeWeek)}
+        </div>
       `;
     } else if (detail) {
       detail.hidden = true;
     }
+  }
+
+  function renderWeekDetailRows(points, weekEnd) {
+    return Object.entries(PATHOGENS).filter(([pathogen]) => (
+      state.settings.pathogens.includes(pathogen)
+    )).map(([pathogen, info]) => {
+      const point = points.find((item) => item.weekEnd === weekEnd && item.pathogen === pathogen);
+      return `
+        <article class="chart-detail-item" style="--series-color:${info.color}">
+          <span class="series-dot" aria-hidden="true"></span>
+          <strong>${escapeHtml(info.label)}</strong>
+          <span>${point ? `${formatNumber(point.value)} WVAL` : "No data"}</span>
+          ${point ? `<span class="level-chip level-${slug(point.category)}">${escapeHtml(point.category || "Category varies by site")}</span>` : ""}
+        </article>
+      `;
+    }).join("");
+  }
+
+  function uniqueWeeks(points) {
+    return Array.from(new Set(points.map((point) => point.weekEnd).filter(Boolean))).sort();
   }
 
   function renderSitesTable(rows) {
