@@ -45,10 +45,6 @@
         <span class="eyebrow">Window</span>
         <div class="range-row" data-range-controls></div>
       </div>
-      <div class="refresh-group">
-        <button type="button" class="refresh-button" data-refresh-now>Refresh data</button>
-        <p class="status-line" data-status></p>
-      </div>
     </section>
 
     <section class="sites-panel" data-sites-section>
@@ -61,12 +57,18 @@
       <div class="table-scroll"><table class="sites-table" data-sites-table></table></div>
     </section>
 
-    <section class="source-panel">
+    <section class="source-panel" data-source-panel>
       <p class="eyebrow">Source and acronyms</p>
-      <div data-source-notes></div>
+      <div class="source-body" data-source-notes></div>
+      <button type="button" class="source-toggle" data-toggle-source>More</button>
     </section>
 
     <footer class="bottom-actions">
+      <div class="bottom-data">
+        <p><span>Data file refreshed</span> <strong data-refreshed-time>--</strong></p>
+        <button type="button" class="refresh-link" data-refresh-now>Refresh data</button>
+        <span class="status-line" data-status></span>
+      </div>
       <button type="button" class="settings-button bottom-settings" data-open-settings aria-label="Open settings" title="Settings">
         <span class="settings-glyph" aria-hidden="true"></span>
         <span>Settings</span>

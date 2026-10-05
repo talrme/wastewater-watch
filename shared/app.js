@@ -116,6 +116,7 @@
     activePoint: null,
     activeWeek: null,
     showChartDetail: false,
+    sourceExpanded: false,
   };
 
   document.addEventListener("DOMContentLoaded", init);
@@ -131,7 +132,7 @@
     if (isCacheFresh(cached)) {
       state.data = cached;
       render();
-      setStatus(`Using cached CDC data. ${dataFreshnessText()}`);
+      setStatus("");
       fetchBundledFallback();
       return;
     }
@@ -140,14 +141,14 @@
       state.data = await fetchCdcData();
       saveLiveData(state.data);
       render();
-      setStatus(`Fetched real CDC data. ${dataFreshnessText()}`);
+      setStatus("");
       fetchBundledFallback();
     } catch (error) {
       console.error(error);
       if (cached) {
         state.data = cached;
         render();
-        setStatus(`Live refresh failed, using older cached CDC data. ${dataFreshnessText()}`, true);
+        setStatus("Live refresh failed. Using older cached CDC data.", true);
         fetchBundledFallback();
       } else {
         await fetchBundledFallback(true);
@@ -177,7 +178,13 @@
         localStorage.removeItem(LIVE_DATA_KEY);
         state.data = state.bundled || state.data;
         render();
-        setStatus("Back to the bundled CDC data file.");
+        setStatus("Using bundled data.");
+      }
+
+      const sourceToggle = target.closest("[data-toggle-source]");
+      if (sourceToggle) {
+        state.sourceExpanded = !state.sourceExpanded;
+        renderSourceNotes();
       }
 
       const rangeButton = target.closest("[data-range]");
@@ -308,6 +315,7 @@
     fillText("[data-area-name]", area.label);
     fillText("[data-area-note]", area.note);
     fillText("[data-updated]", dataFreshnessText());
+    fillText("[data-refreshed-time]", dataRefreshTimeText());
     fillText("[data-source-line]", sourceLine());
     renderCards(latest, aggregate);
     renderChart(aggregate);
@@ -581,6 +589,17 @@
 
   function renderSourceNotes() {
     const source = document.querySelector("[data-source-notes]");
+    const panel = document.querySelector("[data-source-panel]");
+    const toggle = document.querySelector("[data-toggle-source]");
+    if (panel) {
+      panel.hidden = !state.settings.showSources;
+      panel.classList.toggle("is-expanded", state.sourceExpanded);
+    }
+    if (toggle) {
+      toggle.hidden = !state.settings.showSources;
+      toggle.textContent = state.sourceExpanded ? "Hide details" : "More";
+      toggle.setAttribute("aria-expanded", String(state.sourceExpanded));
+    }
     if (source) {
       source.hidden = !state.settings.showSources;
       source.innerHTML = `
@@ -694,16 +713,16 @@
   }
 
   async function refreshFromApi() {
-    setStatus("Refreshing from CDC...");
+    setStatus("Refreshing...");
     try {
       const payload = await fetchCdcData();
       saveLiveData(payload);
       state.data = payload;
       render();
-      setStatus(dataFreshnessText());
+      setStatus("");
     } catch (error) {
       console.error(error);
-      setStatus("Refresh failed. Keeping the current real CDC data file.", true);
+      setStatus("Refresh failed. Keeping current data.", true);
     }
   }
 
@@ -726,7 +745,7 @@
       if (!state.data) {
         state.data = bundled;
         render();
-        setStatus(`Using bundled CDC data fallback. ${dataFreshnessText()}`);
+        setStatus("Using bundled data.");
       }
     } catch (error) {
       console.error(error);
@@ -802,6 +821,11 @@
     return `Latest CDC week: ${latest}. Data file refreshed: ${generated}.`;
   }
 
+  function dataRefreshTimeText() {
+    if (!state.data) return "--";
+    return state.data.generatedAt ? formatDateTime(state.data.generatedAt) : "unknown";
+  }
+
   function togglePathogen(pathogen) {
     const current = new Set(state.settings.pathogens);
     if (current.has(pathogen) && current.size > 1) current.delete(pathogen);
@@ -831,7 +855,10 @@
 
   function setStatus(text, isError) {
     fillText("[data-status]", text);
-    document.querySelectorAll("[data-status]").forEach((el) => el.classList.toggle("is-error", Boolean(isError)));
+    document.querySelectorAll("[data-status]").forEach((el) => {
+      el.hidden = !text;
+      el.classList.toggle("is-error", Boolean(isError));
+    });
   }
 
   function loadSettings() {
