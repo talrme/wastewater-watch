@@ -15,6 +15,8 @@
   --plot-bg: rgba(255, 255, 255, 0.68);
   --grid-stroke: rgba(21, 32, 29, 0.12);
   --axis-stroke: rgba(21, 32, 29, 0.38);
+  --selection-marker: #d65f46;
+  --selection-marker-halo: rgba(255, 255, 255, 0.86);
   --modal-backdrop: rgba(12, 18, 17, 0.42);
   --toggle-bg: #e9eee7;
   --radius: 8px;
@@ -37,6 +39,8 @@ body[data-theme="signal"] {
   --plot-bg: rgba(12, 18, 26, 0.65);
   --grid-stroke: rgba(233, 240, 239, 0.12);
   --axis-stroke: rgba(233, 240, 239, 0.34);
+  --selection-marker: #ffd166;
+  --selection-marker-halo: rgba(3, 6, 10, 0.82);
   --modal-backdrop: rgba(3, 6, 10, 0.62);
   --toggle-bg: #263747;
 }
@@ -58,6 +62,8 @@ body[data-theme="daylight"] {
   --plot-bg: rgba(255, 255, 255, 0.68);
   --grid-stroke: rgba(21, 32, 29, 0.12);
   --axis-stroke: rgba(21, 32, 29, 0.38);
+  --selection-marker: #d65f46;
+  --selection-marker-halo: rgba(255, 255, 255, 0.86);
   --modal-backdrop: rgba(12, 18, 17, 0.42);
   --toggle-bg: #e9eee7;
 }
@@ -79,6 +85,8 @@ body[data-theme="waterline"] {
   --plot-bg: rgba(255, 255, 255, 0.76);
   --grid-stroke: rgba(23, 34, 46, 0.11);
   --axis-stroke: rgba(23, 34, 46, 0.34);
+  --selection-marker: #e36d45;
+  --selection-marker-halo: rgba(255, 255, 255, 0.9);
   --modal-backdrop: rgba(17, 35, 42, 0.34);
   --toggle-bg: #e1eef0;
 }
@@ -100,6 +108,8 @@ body[data-theme="contrast"] {
   --plot-bg: #ffffff;
   --grid-stroke: rgba(15, 17, 21, 0.16);
   --axis-stroke: rgba(15, 17, 21, 0.5);
+  --selection-marker: #d0006f;
+  --selection-marker-halo: rgba(255, 255, 255, 0.96);
   --modal-backdrop: rgba(15, 17, 21, 0.45);
   --toggle-bg: #efefef;
 }
@@ -468,14 +478,26 @@ h2 { font-size: clamp(1.65rem, 3.6vw, 3rem); }
 }
 
 .chart-week-marker {
-  stroke: color-mix(in srgb, var(--ink) 54%, transparent);
-  stroke-width: 2;
-  stroke-dasharray: 6 8;
   pointer-events: none;
 }
 
+.chart-week-marker-halo {
+  stroke: var(--selection-marker-halo);
+  stroke-width: 8;
+  stroke-linecap: round;
+  opacity: 0.96;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart-week-marker-rule {
+  stroke: var(--selection-marker);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
 .chart-point.is-selected-week {
-  fill: var(--line);
+  fill: var(--selection-marker);
   stroke: var(--paper);
   stroke-width: 4.5;
   r: 6.4;

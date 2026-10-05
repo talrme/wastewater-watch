@@ -432,8 +432,11 @@
       <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Wastewater viral activity chart">
         <rect class="plot-bg" x="${pad.left}" y="${pad.top}" width="${innerW}" height="${innerH}"></rect>
         ${grid}
-        <line class="chart-week-marker" data-chart-week-marker x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" hidden></line>
         ${lines}
+        <g class="chart-week-marker" data-chart-week-marker hidden>
+          <line class="chart-week-marker-halo" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}"></line>
+          <line class="chart-week-marker-rule" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}"></line>
+        </g>
         <line class="axis-line" x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}"></line>
         <text class="axis-title" x="${pad.left}" y="${height - 14}">${formatDate(new Date(minDate).toISOString().slice(0, 10))}</text>
         <text class="axis-title is-right" x="${width - pad.right}" y="${height - 14}">${formatDate(new Date(maxDate).toISOString().slice(0, 10))}</text>
@@ -575,12 +578,14 @@
     if (!marker) return;
     const selected = points.find((point) => point.weekEnd === activeWeek);
     if (!selected) {
-      marker.hidden = true;
+      marker.setAttribute("hidden", "");
       return;
     }
-    marker.hidden = false;
-    marker.setAttribute("x1", selected.x.toFixed(1));
-    marker.setAttribute("x2", selected.x.toFixed(1));
+    marker.removeAttribute("hidden");
+    marker.querySelectorAll("line").forEach((line) => {
+      line.setAttribute("x1", selected.x.toFixed(1));
+      line.setAttribute("x2", selected.x.toFixed(1));
+    });
     keepSelectedWeekVisible(wrap, selected.x);
   }
 
