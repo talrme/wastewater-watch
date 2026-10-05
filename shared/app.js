@@ -135,6 +135,7 @@
     data: null,
     settings: loadSettings(),
     activePoint: null,
+    showChartDetail: false,
   };
 
   document.addEventListener("DOMContentLoaded", init);
@@ -223,6 +224,7 @@
       const point = target.closest("[data-point-index]");
       if (point) {
         state.activePoint = Number(point.getAttribute("data-point-index"));
+        state.showChartDetail = true;
         renderChartTooltip();
       }
     });
@@ -336,7 +338,9 @@
   function renderCards(latest, aggregate) {
     const wrap = document.querySelector("[data-cards]");
     if (!wrap) return;
-    wrap.innerHTML = Object.entries(PATHOGENS).map(([pathogen, info]) => {
+    wrap.innerHTML = Object.entries(PATHOGENS).filter(([pathogen]) => (
+      state.settings.pathogens.includes(pathogen)
+    )).map(([pathogen, info]) => {
       const point = latest.get(pathogen);
       const trend = trendFor(pathogen, aggregate);
       if (!point) {
@@ -355,7 +359,10 @@
 
   function renderChart(aggregate) {
     const wrap = document.querySelector("[data-chart]");
+    const detail = document.querySelector("[data-chart-detail]");
     if (!wrap) return;
+    if (detail) detail.hidden = true;
+    state.showChartDetail = false;
 
     const series = Array.from(aggregate.entries())
       .filter(([pathogen]) => state.settings.pathogens.includes(pathogen))
@@ -420,6 +427,7 @@
     wrap.onmousemove = (event) => handleChartMove(event, pointsForTooltip, wrap);
     wrap.onmouseleave = () => {
       state.activePoint = null;
+      state.showChartDetail = false;
       renderChartTooltip();
     };
     wrap.onclick = (event) => handleChartMove(event, pointsForTooltip, wrap);
@@ -444,17 +452,20 @@
       }
     });
     state.activePoint = bestIndex;
+    state.showChartDetail = event.type !== "mousemove";
     renderChartTooltip();
   }
 
   function renderChartTooltip() {
     const wrap = document.querySelector("[data-chart]");
     const tooltip = document.querySelector("[data-chart-tooltip]");
+    const detail = document.querySelector("[data-chart-detail]");
     if (!wrap || !tooltip) return;
     const points = safeJson(wrap.dataset.points || "[]", []);
     const point = points[state.activePoint];
     if (!point) {
       tooltip.hidden = true;
+      if (detail) detail.hidden = true;
       return;
     }
     const info = PATHOGENS[point.pathogen] || { label: point.pathogen, color: "#333" };
@@ -466,6 +477,17 @@
       <strong style="color:${info.color}">${escapeHtml(info.label)} ${formatNumber(point.value)} WVAL</strong>
       <span>${escapeHtml(point.category || "Category varies by site")}</span>
     `;
+    if (detail && state.showChartDetail) {
+      detail.hidden = false;
+      detail.innerHTML = `
+        <span>${escapeHtml(formatDate(point.weekEnd))}</span>
+        <strong style="--detail-color:${info.color}">${escapeHtml(info.label)}</strong>
+        <span>${formatNumber(point.value)} WVAL</span>
+        <span class="level-chip level-${slug(point.category)}">${escapeHtml(point.category || "Category varies by site")}</span>
+      `;
+    } else if (detail) {
+      detail.hidden = true;
+    }
   }
 
   function renderSitesTable(rows) {
@@ -483,17 +505,24 @@
     });
     table.innerHTML = `
       <thead>
-        <tr><th>Site</th><th>County</th><th>Pathogen</th><th>Level</th><th>WVAL</th><th>Source</th></tr>
+        <tr>
+          <th class="col-county">County</th>
+          <th class="col-pathogen">Pathogen</th>
+          <th class="col-level">Level</th>
+          <th class="col-site">Site</th>
+          <th class="col-wval">WVAL</th>
+          <th class="col-source">Source</th>
+        </tr>
       </thead>
       <tbody>
         ${latestRows.slice(0, 48).map((row) => `
           <tr>
-            <td>${escapeHtml(row.site)}</td>
-            <td>${escapeHtml(row.countiesServed)}</td>
-            <td>${escapeHtml(pathogenLabel(row.pathogen))}</td>
-            <td><span class="level-chip level-${slug(row.category)}">${escapeHtml(row.category)}</span></td>
-            <td>${formatNumber(row.wval)}</td>
-            <td>${escapeHtml(row.source)}</td>
+            <td class="col-county">${escapeHtml(row.countiesServed)}</td>
+            <td class="col-pathogen">${escapeHtml(pathogenLabel(row.pathogen))}</td>
+            <td class="col-level"><span class="level-chip level-${slug(row.category)}">${escapeHtml(row.category)}</span></td>
+            <td class="col-site">${escapeHtml(formatSite(row.site))}</td>
+            <td class="col-wval">${formatNumber(row.wval)}</td>
+            <td class="col-source">${escapeHtml(row.source)}</td>
           </tr>
         `).join("")}
       </tbody>
@@ -621,7 +650,7 @@
       saveLiveData(payload);
       state.data = payload;
       render();
-      setStatus(`Refreshed ${payload.rows.length.toLocaleString()} real CDC rows.`);
+      setStatus(dataFreshnessText());
     } catch (error) {
       console.error(error);
       setStatus("Refresh failed. Keeping the current real CDC data file.", true);
@@ -829,6 +858,10 @@
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return String(value);
     return date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+
+  function formatSite(site) {
+    return String(site || "").replace(/^ID:/, "");
   }
 
   function parseDate(value) {

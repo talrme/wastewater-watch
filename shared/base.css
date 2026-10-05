@@ -288,7 +288,16 @@ h2 { font-size: clamp(1.65rem, 3.6vw, 3rem); }
 [data-pathogen].is-active {
   color: var(--ink);
   background: var(--soft);
+  border-color: var(--accent);
   box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--paper) 28%, transparent);
+}
+
+[data-pathogen]:not(.is-active) {
+  opacity: 0.34;
+  filter: grayscale(1);
+  background: transparent;
+  border-color: var(--line);
+  box-shadow: none;
 }
 
 [data-pathogen] span {
@@ -328,7 +337,7 @@ h2 { font-size: clamp(1.65rem, 3.6vw, 3rem); }
 
 .status-cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 
@@ -452,6 +461,25 @@ h2 { font-size: clamp(1.65rem, 3.6vw, 3rem); }
   margin: 2px 0 3px;
 }
 
+.chart-detail-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--paper) 88%, var(--accent) 12%);
+  color: var(--muted);
+  padding: 9px 10px;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.chart-detail-bar strong {
+  color: var(--detail-color);
+  font-weight: 950;
+}
+
 .sites-panel {
   overflow: hidden;
 }
@@ -473,6 +501,13 @@ h2 { font-size: clamp(1.65rem, 3.6vw, 3rem); }
   min-width: 760px;
   border-collapse: collapse;
 }
+
+.col-county { width: 20%; }
+.col-pathogen { width: 16%; }
+.col-level { width: 18%; }
+.col-site { width: 12%; }
+.col-wval { width: 14%; }
+.col-source { width: 20%; }
 
 .sites-table th,
 .sites-table td {
@@ -751,6 +786,56 @@ h2 { font-size: clamp(1.65rem, 3.6vw, 3rem); }
 
   .chart-wrap svg {
     min-width: 720px;
+  }
+
+  .chart-tooltip {
+    display: none !important;
+  }
+
+  .chart-detail-bar {
+    padding: 8px;
+    gap: 6px;
+    font-size: 0.78rem;
+  }
+
+  .chart-detail-bar .level-chip {
+    min-height: 22px;
+    padding: 0 7px;
+    font-size: 0.72rem;
+  }
+
+  .table-scroll {
+    overflow-x: visible;
+  }
+
+  .sites-table {
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .sites-table th,
+  .sites-table td {
+    padding: 8px 5px;
+    font-size: 0.76rem;
+  }
+
+  .sites-table th {
+    font-size: 0.64rem;
+  }
+
+  .sites-table .level-chip {
+    min-height: 22px;
+    padding: 0 6px;
+    font-size: 0.68rem;
+  }
+
+  .col-county { width: 30%; }
+  .col-pathogen { width: 22%; }
+  .col-level { width: 29%; }
+  .col-site { width: 19%; }
+  .col-wval,
+  .col-source {
+    display: none;
   }
 
   .glossary-grid,
