@@ -1,10 +1,10 @@
 # AI Notes - Wastewater Watch
 
-This is a static GitHub Pages site. Signal Board is the production direction.
+This is a static GitHub Pages site. Wastewater Watch is the production direction.
 
 ## Structure
 
-- `index.html` is the production Signal Board site.
+- `index.html` is the production Wastewater Watch site.
 - `styles.css` is the production visual treatment.
 - `shared/app.js` contains the data loading, settings, controls, chart, cards, table, and manual browser refresh logic.
 - `shared/base.css` contains shared layout and components.

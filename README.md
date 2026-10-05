@@ -2,7 +2,7 @@
 
 Live site: https://talrme.github.io/wastewater-watch/
 
-Signal Board is the static respiratory wastewater dashboard. It runs on GitHub Pages and uses real CDC NWSS data.
+Wastewater Watch is a static respiratory wastewater dashboard. It runs on GitHub Pages and uses real CDC NWSS data.
 
 ## Data
 

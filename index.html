@@ -11,14 +11,27 @@
   <main class="app-shell">
     <header class="hero">
       <div class="hero-copy">
-        <p class="eyebrow">Signal Board</p>
         <h1>Wastewater Watch</h1>
-        <p>Bay Area respiratory virus trends from real CDC wastewater data.</p>
+        <p>Bay Area virus trends from wastewater.</p>
       </div>
-      <button type="button" class="settings-button" data-open-settings aria-label="Open settings" title="Settings"><span class="settings-glyph" aria-hidden="true"></span></button>
     </header>
 
-    <section class="control-panel" aria-label="Chart controls">
+    <section class="cards-panel" aria-label="Current status">
+      <div class="status-cards" data-cards></div>
+    </section>
+
+    <section class="chart-panel">
+      <div class="chart-heading">
+        <div>
+          <p class="eyebrow" data-area-name></p>
+          <h2>Respiratory wastewater signal</h2>
+        </div>
+        <p data-source-line></p>
+      </div>
+      <div class="chart-wrap" data-chart></div>
+    </section>
+
+    <section class="control-panel options-panel" aria-label="Chart controls">
       <div class="control-group">
         <label>Region<select data-area-select></select></label>
         <p data-area-note></p>
@@ -35,23 +48,6 @@
       </div>
     </section>
 
-    <section class="chart-panel">
-      <div class="chart-heading">
-        <div>
-          <p class="eyebrow" data-area-name></p>
-          <h2>Respiratory wastewater signal</h2>
-        </div>
-        <p data-source-line></p>
-      </div>
-      <div class="chart-wrap" data-chart></div>
-      <div class="point-details" data-point-details></div>
-      <div class="summary-grid" data-summary></div>
-    </section>
-
-    <section class="cards-panel">
-      <div class="status-cards" data-cards></div>
-    </section>
-
     <section class="sites-panel" data-sites-section>
       <div class="sites-heading">
         <div>
@@ -66,6 +62,13 @@
       <p class="eyebrow">Source and acronyms</p>
       <div data-source-notes></div>
     </section>
+
+    <footer class="bottom-actions">
+      <button type="button" class="settings-button bottom-settings" data-open-settings aria-label="Open settings" title="Settings">
+        <span class="settings-glyph" aria-hidden="true"></span>
+        <span>Settings</span>
+      </button>
+    </footer>
   </main>
 
   <div class="modal-backdrop" data-settings-backdrop hidden></div>

@@ -127,7 +127,6 @@
     data: null,
     settings: loadSettings(),
     activePoint: null,
-    selectedPoint: null,
   };
 
   document.addEventListener("DOMContentLoaded", init);
@@ -195,7 +194,6 @@
       const rangeButton = target.closest("[data-range]");
       if (rangeButton) {
         state.settings.range = rangeButton.getAttribute("data-range") || state.settings.range;
-        state.selectedPoint = null;
         saveSettings();
         render();
       }
@@ -227,7 +225,6 @@
 
       if (target.matches("[data-area-select]")) {
         state.settings.area = target.value;
-        state.selectedPoint = null;
         saveSettings();
         render();
       }
@@ -310,9 +307,8 @@
     fillText("[data-source-line]", sourceLine());
     renderCards(latest, aggregate);
     renderChart(aggregate);
-    renderPointDetails();
     renderSitesTable(rows);
-    renderSummary(rows, aggregate, latest);
+    renderSourceNotes();
     renderSettingsValues();
   }
 
@@ -418,10 +414,10 @@
       state.activePoint = null;
       renderChartTooltip();
     };
-    wrap.onclick = (event) => handleChartMove(event, pointsForTooltip, wrap, true);
+    wrap.onclick = (event) => handleChartMove(event, pointsForTooltip, wrap);
   }
 
-  function handleChartMove(event, points, wrap, pin) {
+  function handleChartMove(event, points, wrap) {
     if (!points.length) return;
     const svg = wrap.querySelector("svg");
     if (!svg) return;
@@ -440,11 +436,7 @@
       }
     });
     state.activePoint = bestIndex;
-    if (pin) {
-      state.selectedPoint = points[bestIndex];
-      renderPointDetails();
-    }
-    renderChartTooltip(pin ? { persist: true } : undefined);
+    renderChartTooltip();
   }
 
   function renderChartTooltip() {
@@ -465,72 +457,7 @@
       <p>${escapeHtml(formatDate(point.weekEnd))}</p>
       <strong style="color:${info.color}">${escapeHtml(info.label)} ${formatNumber(point.value)} WVAL</strong>
       <span>${escapeHtml(point.category || "Category varies by site")}</span>
-      <small>Click for site details</small>
     `;
-  }
-
-  function renderPointDetails() {
-    const panel = document.querySelector("[data-point-details]");
-    if (!panel) return;
-
-    const point = state.selectedPoint;
-    if (!point) {
-      panel.innerHTML = `
-        <div class="point-empty">
-          <p class="eyebrow">Graph details</p>
-          <strong>Tap or click any point in the chart.</strong>
-          <span>Details here will show the reporting sites behind that weekly area signal.</span>
-        </div>
-      `;
-      return;
-    }
-
-    const info = PATHOGENS[point.pathogen] || { label: point.pathogen, long: point.pathogen, color: "#999" };
-    const area = selectedArea();
-    const rows = filteredRowsByArea(area)
-      .filter((row) => row.pathogen === point.pathogen && row.weekEnd === point.weekEnd)
-      .sort((a, b) => b.wval - a.wval);
-    const populations = rows.reduce((sum, row) => sum + (row.populationServed || 0), 0);
-    const previous = previousPoint(point);
-    const diff = previous ? point.value - previous.value : null;
-    const trendText = diff === null
-      ? "No previous point in this view"
-      : `${diff >= 0 ? "Up" : "Down"} ${formatNumber(Math.abs(diff))} from previous chart point`;
-
-    panel.innerHTML = `
-      <div class="point-detail-head" style="--accent:${info.color}">
-        <div>
-          <p class="eyebrow">${escapeHtml(area.label)} detail</p>
-          <h3>${escapeHtml(info.label)} on ${escapeHtml(formatDate(point.weekEnd))}</h3>
-          <p>${escapeHtml(info.long)} area average: <strong>${formatNumber(point.value)} WVAL</strong>, ${escapeHtml(point.category)}.</p>
-        </div>
-        <button type="button" class="plain-button point-clear" data-clear-point>Clear</button>
-      </div>
-      <div class="point-stat-grid">
-        <article><span>${escapeHtml(point.category)}</span><strong>Level</strong></article>
-        <article><span>${formatNumber(point.value)}</span><strong>Weighted WVAL</strong></article>
-        <article><span>${rows.length}</span><strong>Reporting rows</strong></article>
-        <article><span>${formatPopulation(populations)}</span><strong>Population served</strong></article>
-      </div>
-      <p class="point-trend">${escapeHtml(trendText)}</p>
-      <div class="point-site-list">
-        ${rows.slice(0, 8).map((row) => `
-          <article>
-            <div><strong>${escapeHtml(row.site)}</strong><span>${escapeHtml(row.countiesServed)} · ${escapeHtml(row.source)}</span></div>
-            <span class="level-chip level-${slug(row.category)}">${escapeHtml(row.category)}</span>
-            <b>${formatNumber(row.wval)}</b>
-          </article>
-        `).join("") || "<p>No site rows found for this selected point.</p>"}
-      </div>
-    `;
-
-    const clear = panel.querySelector("[data-clear-point]");
-    if (clear) {
-      clear.addEventListener("click", () => {
-        state.selectedPoint = null;
-        renderPointDetails();
-      }, { once: true });
-    }
   }
 
   function renderSitesTable(rows) {
@@ -565,24 +492,12 @@
     `;
   }
 
-  function renderSummary(rows, aggregate, latest) {
-    const wrap = document.querySelector("[data-summary]");
-    if (!wrap) return;
-    const latestWeek = latestWeekIn(rows);
-    const siteCount = new Set(rows.map((row) => row.site)).size;
-    const visiblePathogens = state.settings.pathogens.map(pathogenLabel).join(", ");
-    wrap.innerHTML = `
-      <article><span>${formatDate(latestWeek)}</span><strong>Latest week</strong></article>
-      <article><span>${siteCount}</span><strong>Matching sites</strong></article>
-      <article><span>${escapeHtml(visiblePathogens)}</span><strong>Shown in chart</strong></article>
-      <article><span>${aggregateNote(aggregate)}</span><strong>Area math</strong></article>
-    `;
-
+  function renderSourceNotes() {
     const source = document.querySelector("[data-source-notes]");
     if (source) {
       source.hidden = !state.settings.showSources;
       source.innerHTML = `
-        <p>This prototype uses real CDC NWSS site-level wastewater viral activity level data for California. Area lines are population-weighted averages of matching sites. CDC WVAL is designed for SARS-CoV-2, Influenza A, and RSV and is categorized as Very Low, Low, Moderate, High, or Very High.</p>
+        <p>This site uses real CDC NWSS site-level wastewater viral activity level data for California. Area lines are population-weighted averages of matching sites. CDC WVAL is designed for SARS-CoV-2, Influenza A, and RSV and is categorized as Very Low, Low, Moderate, High, or Very High.</p>
         <p>The page fetches and processes the CDC rows in your browser, then caches the result locally for the selected cache window. If live fetching fails, it falls back to the checked-in data file.</p>
         <p>Wastewater cannot tell you the exact number of sick people. It is best read as a trend signal alongside clinical testing, hospitalizations, and local public health guidance.</p>
         <div class="glossary-grid">
@@ -799,17 +714,11 @@
     return `Latest CDC week: ${latest}. Data file refreshed: ${generated}.`;
   }
 
-  function aggregateNote(aggregate) {
-    const pointCounts = Array.from(aggregate.values()).reduce((sum, points) => sum + points.length, 0);
-    return pointCounts ? "weighted WVAL" : "no data";
-  }
-
   function togglePathogen(pathogen) {
     const current = new Set(state.settings.pathogens);
     if (current.has(pathogen) && current.size > 1) current.delete(pathogen);
     else current.add(pathogen);
     state.settings.pathogens = Array.from(current);
-    state.selectedPoint = null;
     saveSettings();
     render();
   }
@@ -881,21 +790,6 @@
 
   function pathogenLabel(pathogen) {
     return PATHOGENS[pathogen] ? PATHOGENS[pathogen].label : pathogen;
-  }
-
-  function previousPoint(point) {
-    const area = selectedArea();
-    const rows = filterRowsByRange(filteredRowsByArea(area), selectedRange().days);
-    const points = aggregateRows(rows).get(point.pathogen) || [];
-    const index = points.findIndex((item) => item.weekEnd === point.weekEnd);
-    return index > 0 ? points[index - 1] : null;
-  }
-
-  function formatPopulation(value) {
-    const number = Number(value) || 0;
-    if (number >= 1000000) return `${(number / 1000000).toFixed(1)}M`;
-    if (number >= 1000) return `${Math.round(number / 1000).toLocaleString()}k`;
-    return number.toLocaleString();
   }
 
   function formatNumber(value) {
