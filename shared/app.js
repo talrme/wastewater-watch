@@ -46,32 +46,11 @@
       note: "Includes participating Alameda County sewersheds in CDC NWSS.",
     },
     {
-      id: "contra-costa",
-      label: "Contra Costa County",
-      short: "Contra Costa",
-      counties: ["Contra Costa"],
-      note: "Contra Costa-only sites plus sites serving Contra Costa.",
-    },
-    {
       id: "bay-area",
       label: "Bay Area",
       short: "Bay Area",
       counties: BAY_COUNTIES,
       note: "Nine-county Bay Area approximation.",
-    },
-    {
-      id: "sf-peninsula",
-      label: "SF + Peninsula",
-      short: "SF/Peninsula",
-      counties: ["San Francisco", "San Mateo"],
-      note: "San Francisco and San Mateo sites.",
-    },
-    {
-      id: "south-bay",
-      label: "South Bay",
-      short: "South Bay",
-      counties: ["Santa Clara"],
-      note: "Santa Clara County sites.",
     },
     {
       id: "california",
@@ -260,7 +239,7 @@
     const areaSelect = document.querySelector("[data-area-select]");
     if (areaSelect) {
       areaSelect.innerHTML = AREAS.map((area) => `<option value="${area.id}">${escapeHtml(area.label)}</option>`).join("");
-      areaSelect.value = state.settings.area;
+      areaSelect.value = selectedArea().id;
     }
 
     const rangeWrap = document.querySelector("[data-range-controls]");
@@ -324,7 +303,7 @@
 
   function updateControls() {
     const areaSelect = document.querySelector("[data-area-select]");
-    if (areaSelect) areaSelect.value = state.settings.area;
+    if (areaSelect) areaSelect.value = selectedArea().id;
 
     document.querySelectorAll("[data-range]").forEach((button) => {
       button.classList.toggle("is-active", button.getAttribute("data-range") === state.settings.range);
@@ -786,16 +765,30 @@
 
   function loadSettings() {
     const saved = safeJson(localStorage.getItem(STORAGE_KEY) || "null", null);
-    if (saved) return { ...DEFAULT_SETTINGS, ...saved };
+    if (saved) return normalizeSettings({ ...DEFAULT_SETTINGS, ...saved });
 
     const legacy = safeJson(localStorage.getItem(LEGACY_STORAGE_KEY) || "null", null);
     if (legacy) {
-      const migrated = { ...DEFAULT_SETTINGS, ...legacy, area: DEFAULT_SETTINGS.area };
+      const migrated = normalizeSettings({ ...DEFAULT_SETTINGS, ...legacy, area: DEFAULT_SETTINGS.area });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
       return migrated;
     }
 
-    return { ...DEFAULT_SETTINGS };
+    return normalizeSettings({ ...DEFAULT_SETTINGS });
+  }
+
+  function normalizeSettings(settings) {
+    const normalized = { ...settings };
+    if (!AREAS.some((area) => area.id === normalized.area)) {
+      normalized.area = DEFAULT_SETTINGS.area;
+    }
+    if (!RANGES.some((range) => range.id === normalized.range)) {
+      normalized.range = DEFAULT_SETTINGS.range;
+    }
+    const knownPathogens = new Set(Object.keys(PATHOGENS));
+    const pathogens = Array.isArray(normalized.pathogens) ? normalized.pathogens.filter((pathogen) => knownPathogens.has(pathogen)) : [];
+    normalized.pathogens = pathogens.length ? pathogens : DEFAULT_SETTINGS.pathogens.slice();
+    return normalized;
   }
 
   function saveSettings() {
