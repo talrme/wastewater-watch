@@ -3,8 +3,14 @@
 
   const STORAGE_KEY = "wastewater-watch-settings-v1";
   const LIVE_DATA_KEY = "wastewater-watch-live-data-v1";
-  const DATA_PATH = "../data/wastewater.json";
+  const DATA_PATH = (document.currentScript && document.currentScript.dataset.dataPath) || "../data/wastewater.json";
   const CDC_ENDPOINT = "https://data.cdc.gov/resource/atcp-73re.json";
+  const THEMES = [
+    { id: "signal", label: "Signal", description: "Dark and calm." },
+    { id: "daylight", label: "Daylight", description: "Light and crisp." },
+    { id: "waterline", label: "Waterline", description: "Soft and warm." },
+    { id: "contrast", label: "Contrast", description: "High contrast." },
+  ];
   const BAY_COUNTIES = [
     "Alameda",
     "Contra Costa",
@@ -112,6 +118,8 @@
     showSources: true,
     compact: false,
     reduceMotion: false,
+    theme: "signal",
+    cacheDays: "3",
   };
 
   const state = {
@@ -119,6 +127,7 @@
     data: null,
     settings: loadSettings(),
     activePoint: null,
+    selectedPoint: null,
   };
 
   document.addEventListener("DOMContentLoaded", init);
@@ -126,19 +135,35 @@
   async function init() {
     document.body.classList.toggle("is-compact", state.settings.compact);
     document.body.classList.toggle("reduce-motion", state.settings.reduceMotion);
+    document.body.dataset.theme = state.settings.theme || "signal";
     bindStaticEvents();
     renderShell();
-    setStatus("Loading real CDC data...");
-    try {
-      const bundled = await fetchJson(DATA_PATH);
-      state.bundled = bundled;
-      const live = loadLiveData();
-      state.data = newerData(live, bundled);
+    setStatus("Checking browser cache...");
+    const cached = loadLiveData();
+    if (isCacheFresh(cached)) {
+      state.data = cached;
       render();
-      setStatus(dataFreshnessText());
+      setStatus(`Using cached CDC data. ${dataFreshnessText()}`);
+      fetchBundledFallback();
+      return;
+    }
+    try {
+      setStatus("Fetching real CDC data in this browser...");
+      state.data = await fetchCdcData();
+      saveLiveData(state.data);
+      render();
+      setStatus(`Fetched real CDC data. ${dataFreshnessText()}`);
+      fetchBundledFallback();
     } catch (error) {
       console.error(error);
-      setStatus("Could not load the bundled CDC data file. Use Refresh now if you are online.", true);
+      if (cached) {
+        state.data = cached;
+        render();
+        setStatus(`Live refresh failed, using older cached CDC data. ${dataFreshnessText()}`, true);
+        fetchBundledFallback();
+      } else {
+        await fetchBundledFallback(true);
+      }
     }
   }
 
@@ -170,6 +195,7 @@
       const rangeButton = target.closest("[data-range]");
       if (rangeButton) {
         state.settings.range = rangeButton.getAttribute("data-range") || state.settings.range;
+        state.selectedPoint = null;
         saveSettings();
         render();
       }
@@ -178,6 +204,14 @@
       if (pathogenButton) {
         const pathogen = pathogenButton.getAttribute("data-pathogen");
         if (pathogen) togglePathogen(pathogen);
+      }
+
+      const themeButton = target.closest("[data-theme-option]");
+      if (themeButton) {
+        state.settings.theme = themeButton.getAttribute("data-theme-option") || "signal";
+        document.body.dataset.theme = state.settings.theme;
+        saveSettings();
+        renderSettingsValues();
       }
 
       const point = target.closest("[data-point-index]");
@@ -193,6 +227,7 @@
 
       if (target.matches("[data-area-select]")) {
         state.settings.area = target.value;
+        state.selectedPoint = null;
         saveSettings();
         render();
       }
@@ -204,6 +239,7 @@
         saveSettings();
         document.body.classList.toggle("is-compact", state.settings.compact);
         document.body.classList.toggle("reduce-motion", state.settings.reduceMotion);
+        document.body.dataset.theme = state.settings.theme || "signal";
         render();
       }
     });
@@ -237,10 +273,22 @@
     const settings = document.querySelector("[data-settings-fields]");
     if (settings) {
       settings.innerHTML = `
+        <div class="theme-setting">
+          <span>Color scheme</span>
+          <div class="theme-options">
+            ${THEMES.map((theme) => `
+              <button type="button" class="theme-option theme-${theme.id}" data-theme-option="${theme.id}">
+                <strong>${escapeHtml(theme.label)}</strong>
+                <em>${escapeHtml(theme.description)}</em>
+              </button>
+            `).join("")}
+          </div>
+        </div>
         <label class="toggle-row"><span>Show site table</span><input type="checkbox" data-setting="showSites"></label>
         <label class="toggle-row"><span>Show source notes</span><input type="checkbox" data-setting="showSources"></label>
         <label class="toggle-row"><span>Compact view</span><input type="checkbox" data-setting="compact"></label>
         <label class="toggle-row"><span>Reduce motion</span><input type="checkbox" data-setting="reduceMotion"></label>
+        <label class="stacked-setting"><span>Browser cache</span><select data-setting="cacheDays"><option value="1">Refresh if older than 1 day</option><option value="3">Refresh if older than 3 days</option><option value="7">Refresh if older than 7 days</option></select></label>
       `;
     }
   }
@@ -262,6 +310,7 @@
     fillText("[data-source-line]", sourceLine());
     renderCards(latest, aggregate);
     renderChart(aggregate);
+    renderPointDetails();
     renderSitesTable(rows);
     renderSummary(rows, aggregate, latest);
     renderSettingsValues();
@@ -391,6 +440,10 @@
       }
     });
     state.activePoint = bestIndex;
+    if (pin) {
+      state.selectedPoint = points[bestIndex];
+      renderPointDetails();
+    }
     renderChartTooltip(pin ? { persist: true } : undefined);
   }
 
@@ -412,7 +465,72 @@
       <p>${escapeHtml(formatDate(point.weekEnd))}</p>
       <strong style="color:${info.color}">${escapeHtml(info.label)} ${formatNumber(point.value)} WVAL</strong>
       <span>${escapeHtml(point.category || "Category varies by site")}</span>
+      <small>Click for site details</small>
     `;
+  }
+
+  function renderPointDetails() {
+    const panel = document.querySelector("[data-point-details]");
+    if (!panel) return;
+
+    const point = state.selectedPoint;
+    if (!point) {
+      panel.innerHTML = `
+        <div class="point-empty">
+          <p class="eyebrow">Graph details</p>
+          <strong>Tap or click any point in the chart.</strong>
+          <span>Details here will show the reporting sites behind that weekly area signal.</span>
+        </div>
+      `;
+      return;
+    }
+
+    const info = PATHOGENS[point.pathogen] || { label: point.pathogen, long: point.pathogen, color: "#999" };
+    const area = selectedArea();
+    const rows = filteredRowsByArea(area)
+      .filter((row) => row.pathogen === point.pathogen && row.weekEnd === point.weekEnd)
+      .sort((a, b) => b.wval - a.wval);
+    const populations = rows.reduce((sum, row) => sum + (row.populationServed || 0), 0);
+    const previous = previousPoint(point);
+    const diff = previous ? point.value - previous.value : null;
+    const trendText = diff === null
+      ? "No previous point in this view"
+      : `${diff >= 0 ? "Up" : "Down"} ${formatNumber(Math.abs(diff))} from previous chart point`;
+
+    panel.innerHTML = `
+      <div class="point-detail-head" style="--accent:${info.color}">
+        <div>
+          <p class="eyebrow">${escapeHtml(area.label)} detail</p>
+          <h3>${escapeHtml(info.label)} on ${escapeHtml(formatDate(point.weekEnd))}</h3>
+          <p>${escapeHtml(info.long)} area average: <strong>${formatNumber(point.value)} WVAL</strong>, ${escapeHtml(point.category)}.</p>
+        </div>
+        <button type="button" class="plain-button point-clear" data-clear-point>Clear</button>
+      </div>
+      <div class="point-stat-grid">
+        <article><span>${escapeHtml(point.category)}</span><strong>Level</strong></article>
+        <article><span>${formatNumber(point.value)}</span><strong>Weighted WVAL</strong></article>
+        <article><span>${rows.length}</span><strong>Reporting rows</strong></article>
+        <article><span>${formatPopulation(populations)}</span><strong>Population served</strong></article>
+      </div>
+      <p class="point-trend">${escapeHtml(trendText)}</p>
+      <div class="point-site-list">
+        ${rows.slice(0, 8).map((row) => `
+          <article>
+            <div><strong>${escapeHtml(row.site)}</strong><span>${escapeHtml(row.countiesServed)} · ${escapeHtml(row.source)}</span></div>
+            <span class="level-chip level-${slug(row.category)}">${escapeHtml(row.category)}</span>
+            <b>${formatNumber(row.wval)}</b>
+          </article>
+        `).join("") || "<p>No site rows found for this selected point.</p>"}
+      </div>
+    `;
+
+    const clear = panel.querySelector("[data-clear-point]");
+    if (clear) {
+      clear.addEventListener("click", () => {
+        state.selectedPoint = null;
+        renderPointDetails();
+      }, { once: true });
+    }
   }
 
   function renderSitesTable(rows) {
@@ -465,7 +583,16 @@
       source.hidden = !state.settings.showSources;
       source.innerHTML = `
         <p>This prototype uses real CDC NWSS site-level wastewater viral activity level data for California. Area lines are population-weighted averages of matching sites. CDC WVAL is designed for SARS-CoV-2, Influenza A, and RSV and is categorized as Very Low, Low, Moderate, High, or Very High.</p>
+        <p>The page fetches and processes the CDC rows in your browser, then caches the result locally for the selected cache window. If live fetching fails, it falls back to the checked-in data file.</p>
         <p>Wastewater cannot tell you the exact number of sick people. It is best read as a trend signal alongside clinical testing, hospitalizations, and local public health guidance.</p>
+        <div class="glossary-grid">
+          <article><strong>CDC</strong><span>Centers for Disease Control and Prevention.</span></article>
+          <article><strong>NWSS</strong><span>National Wastewater Surveillance System.</span></article>
+          <article><strong>WVAL</strong><span>Wastewater Viral Activity Level, a CDC normalized activity score.</span></article>
+          <article><strong>RSV</strong><span>Respiratory syncytial virus.</span></article>
+          <article><strong>SARS-CoV-2</strong><span>The virus that causes COVID.</span></article>
+          <article><strong>Sewershed</strong><span>The area draining into a wastewater sampling site.</span></article>
+        </div>
       `;
     }
   }
@@ -479,6 +606,9 @@
       } else if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
         input.value = state.settings[key] || "";
       }
+    });
+    document.querySelectorAll("[data-theme-option]").forEach((button) => {
+      button.classList.toggle("is-active", button.getAttribute("data-theme-option") === state.settings.theme);
     });
   }
 
@@ -563,22 +693,43 @@
   async function refreshFromApi() {
     setStatus("Refreshing from CDC...");
     try {
-      const fromWeek = fromWeekDate();
-      const params = new URLSearchParams({
-        "$select": "state_territory,counties_served,site,population_served,source,site_wval,site_wval_category,date_included_in_wval,week_end,pathogen_target,date_updated",
-        "$where": `state_territory='California' AND week_end >= '${fromWeek}'`,
-        "$limit": "50000",
-        "$order": "week_end,site,pathogen_target",
-      });
-      const rows = await fetchJson(`${CDC_ENDPOINT}?${params.toString()}`);
-      const payload = normalizeLiveRows(rows, fromWeek);
-      localStorage.setItem(LIVE_DATA_KEY, JSON.stringify(payload));
+      const payload = await fetchCdcData();
+      saveLiveData(payload);
       state.data = payload;
       render();
       setStatus(`Refreshed ${payload.rows.length.toLocaleString()} real CDC rows.`);
     } catch (error) {
       console.error(error);
       setStatus("Refresh failed. Keeping the current real CDC data file.", true);
+    }
+  }
+
+  async function fetchCdcData() {
+    const fromWeek = fromWeekDate();
+    const params = new URLSearchParams({
+      "$select": "state_territory,counties_served,site,population_served,source,site_wval,site_wval_category,date_included_in_wval,week_end,pathogen_target,date_updated",
+      "$where": `state_territory='California' AND week_end >= '${fromWeek}'`,
+      "$limit": "50000",
+      "$order": "week_end,site,pathogen_target",
+    });
+    const rows = await fetchJson(`${CDC_ENDPOINT}?${params.toString()}`);
+    return normalizeLiveRows(rows, fromWeek);
+  }
+
+  async function fetchBundledFallback(showErrors) {
+    try {
+      const bundled = await fetchJson(DATA_PATH);
+      state.bundled = bundled;
+      if (!state.data) {
+        state.data = bundled;
+        render();
+        setStatus(`Using bundled CDC data fallback. ${dataFreshnessText()}`);
+      }
+    } catch (error) {
+      console.error(error);
+      if (showErrors) {
+        setStatus("Could not load live CDC data or the bundled CDC data file.", true);
+      }
     }
   }
 
@@ -658,6 +809,7 @@
     if (current.has(pathogen) && current.size > 1) current.delete(pathogen);
     else current.add(pathogen);
     state.settings.pathogens = Array.from(current);
+    state.selectedPoint = null;
     saveSettings();
     render();
   }
@@ -698,10 +850,21 @@
     return payload && Array.isArray(payload.rows) ? payload : null;
   }
 
-  function newerData(a, b) {
-    if (!a) return b;
-    if (!b) return a;
-    return new Date(a.generatedAt || 0) > new Date(b.generatedAt || 0) ? a : b;
+  function saveLiveData(payload) {
+    try {
+      localStorage.setItem(LIVE_DATA_KEY, JSON.stringify(payload));
+      return true;
+    } catch (error) {
+      console.warn("Could not cache live CDC data in this browser.", error);
+      return false;
+    }
+  }
+
+  function isCacheFresh(payload) {
+    if (!payload || !payload.generatedAt || !Array.isArray(payload.rows)) return false;
+    const cacheDays = Number(state.settings.cacheDays || 3);
+    const ageMs = Date.now() - new Date(payload.generatedAt).getTime();
+    return Number.isFinite(ageMs) && ageMs >= 0 && ageMs < cacheDays * 24 * 60 * 60 * 1000;
   }
 
   async function fetchJson(url) {
@@ -718,6 +881,21 @@
 
   function pathogenLabel(pathogen) {
     return PATHOGENS[pathogen] ? PATHOGENS[pathogen].label : pathogen;
+  }
+
+  function previousPoint(point) {
+    const area = selectedArea();
+    const rows = filterRowsByRange(filteredRowsByArea(area), selectedRange().days);
+    const points = aggregateRows(rows).get(point.pathogen) || [];
+    const index = points.findIndex((item) => item.weekEnd === point.weekEnd);
+    return index > 0 ? points[index - 1] : null;
+  }
+
+  function formatPopulation(value) {
+    const number = Number(value) || 0;
+    if (number >= 1000000) return `${(number / 1000000).toFixed(1)}M`;
+    if (number >= 1000) return `${Math.round(number / 1000).toLocaleString()}k`;
+    return number.toLocaleString();
   }
 
   function formatNumber(value) {

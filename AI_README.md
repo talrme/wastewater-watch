@@ -1,10 +1,11 @@
 # AI Notes - Wastewater Watch
 
-This is a static multi-option site. Keep all staging options functional until Tal chooses one to promote.
+This is a static GitHub Pages site. Tal chose `staging_2` / Signal Board as the production direction.
 
 ## Structure
 
-- `index.html` links to all staging options.
+- `index.html` is the production Signal Board site.
+- `styles.css` is the production visual treatment.
 - `staging_1` through `staging_5` are separate visual treatments.
 - `shared/app.js` contains the data loading, settings, controls, chart, cards, table, and manual browser refresh logic.
 - `shared/base.css` contains shared layout and components.
@@ -16,7 +17,9 @@ This is a static multi-option site. Keep all staging options functional until Ta
 
 Do not use dummy data unless explicitly asked, and if you do, label it prominently in the UI and docs.
 
-The current data source is CDC NWSS WVAL dataset `atcp-73re`. The UI currently filters California rows into these area groups:
+The current data source is CDC NWSS WVAL dataset `atcp-73re`. The production app tries to fetch live California rows directly in the browser, then normalizes and aggregates them client-side. It stores that live payload in local storage and reuses it for the configured browser-cache window, defaulting to 3 days. The checked-in `data/wastewater.json` is a fallback and should still be refreshed by script/GitHub Actions.
+
+The UI currently filters California rows into these area groups:
 
 - East Bay: Alameda + Contra Costa
 - Alameda County
@@ -30,9 +33,9 @@ Area lines are population-weighted averages of selected matching sites. Keep the
 
 ## Promotion
 
-When Tal chooses a staging option:
+Signal Board has already been promoted:
 
-1. Copy that staging option's `index.html` and `styles.css` to the repo root.
-2. Update paths from `../shared/...` and `../data/...` to `shared/...` and `data/...`.
+1. Root `index.html` uses `shared/app.js` with `data-data-path="data/wastewater.json"`.
+2. `staging_2/index.html` remains as a reference copy with `data-data-path="../data/wastewater.json"`.
 3. Keep the staging folders unless Tal asks to delete them.
 4. Verify root and chosen staging option both load from a local server.

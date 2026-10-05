@@ -2,15 +2,17 @@
 
 Live site: https://talrme.github.io/wastewater-watch/
 
-Five staging concepts for a static respiratory wastewater dashboard:
+Signal Board is the promoted static respiratory wastewater dashboard. It runs on GitHub Pages and uses real CDC NWSS data.
+
+The earlier visual explorations remain in:
 
 - `staging_1` - Bay Radar
-- `staging_2` - Signal Board
+- `staging_2` - Signal Board reference copy
 - `staging_3` - Waterline
 - `staging_4` - Viral Transit
 - `staging_5` - Field Notes
 
-All options use the same real data file: `data/wastewater.json`.
+The production page uses the same real data model as the staging options.
 
 ## Data
 
@@ -20,7 +22,9 @@ The data file is generated from the CDC NWSS public Socrata dataset:
 
 Dataset ID: `atcp-73re`
 
-The refresh script pulls California rows for the last ~400 days and writes a compact static JSON file. No dummy data is used.
+No dummy data is used.
+
+The browser tries to fetch current California rows directly from the CDC API, normalizes them, aggregates them in-browser, and caches that live payload in local storage. By default it reuses browser-cached data for 3 days; this can be changed to 1, 3, or 7 days in Settings. The checked-in `data/wastewater.json` file remains as a reliable bundled fallback and for GitHub Actions refreshes.
 
 ## Manual Refresh
 
@@ -32,7 +36,7 @@ python3 scripts/refresh_data.py
 
 Then commit the updated `data/wastewater.json`.
 
-Each staging website also has a **Refresh now** button. That button fetches live CDC rows in the browser and stores the refreshed data in that browser's local storage. It does not update the checked-in `data/wastewater.json` file.
+The website also has a **Refresh data** button. That button fetches live CDC rows in the browser and stores the refreshed data in that browser's local storage. It does not update the checked-in `data/wastewater.json` file.
 
 ## GitHub Actions Refresh
 
@@ -59,6 +63,6 @@ In GitHub:
 3. Choose `main` and `/ (root)`.
 4. Save.
 
-The staging index will be at:
+The live site will be at:
 
 https://talrme.github.io/wastewater-watch/

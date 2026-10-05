@@ -7,12 +7,12 @@
   <meta name="theme-color" content="#101721">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-theme="signal">
   <main class="app-shell">
     <header class="hero">
       <div class="hero-copy">
         <p class="eyebrow">Signal Board</p>
-        <h1>Bug Levels</h1>
+        <h1>Wastewater Watch</h1>
         <p>A quieter operations-board view for quickly checking whether respiratory virus signals are rising.</p>
       </div>
       <button type="button" class="settings-button" data-open-settings aria-label="Open settings" title="Settings"><span class="settings-glyph" aria-hidden="true"></span></button>
@@ -25,6 +25,7 @@
     <section class="chart-panel">
       <div class="chart-heading"><div><p class="eyebrow" data-area-name></p><h2>Respiratory wastewater signal</h2></div><p data-source-line></p></div>
       <div class="chart-wrap" data-chart></div>
+      <div class="point-details" data-point-details></div>
       <div class="summary-grid" data-summary></div>
     </section>
     <section class="cards-panel"><div class="status-cards" data-cards></div></section>
@@ -35,6 +36,6 @@
   <section class="settings-modal" data-settings-modal hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
     <div class="settings-panel"><header><div><p class="eyebrow">Signal Board</p><h2 id="settings-title">Settings</h2></div><button type="button" data-close-settings aria-label="Close settings">x</button></header><div data-settings-fields></div><div class="settings-actions"><button type="button" class="plain-button" data-clear-live>Use bundled data</button></div></div>
   </section>
-  <script src="../shared/app.js"></script>
+  <script src="../shared/app.js" data-data-path="../data/wastewater.json"></script>
 </body>
 </html>
