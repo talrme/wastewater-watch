@@ -33,15 +33,17 @@
     </section>
 
     <section class="control-panel options-panel" aria-label="Chart controls">
-      <div class="control-group">
+      <div class="control-group pathogen-control">
+        <span class="eyebrow">Show</span>
+        <div class="pathogen-row" data-pathogen-controls></div>
+      </div>
+      <div class="control-group region-control">
         <label>Region<select data-area-select></select></label>
         <p data-area-note></p>
       </div>
-      <div class="control-group">
+      <div class="control-group range-control">
         <span class="eyebrow">Window</span>
         <div class="range-row" data-range-controls></div>
-        <span class="eyebrow">Show</span>
-        <div class="pathogen-row" data-pathogen-controls></div>
       </div>
       <div class="refresh-group">
         <button type="button" class="refresh-button" data-refresh-now>Refresh data</button>
