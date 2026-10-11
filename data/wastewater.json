@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-10T18:43:10.681297+00:00",
+  "generatedAt": "2026-10-11T19:01:16.491019+00:00",
   "source": {
     "name": "CDC Wastewater Viral Activity Level for SARS-CoV-2, Influenza A and RSV",
     "datasetId": "atcp-73re",
@@ -9,7 +9,7 @@
   },
   "filters": {
     "state": "California",
-    "fromWeek": "2025-09-05",
+    "fromWeek": "2025-09-06",
     "pathogens": [
       "Influenza A virus",
       "RSV",
